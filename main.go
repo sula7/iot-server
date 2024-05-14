@@ -23,6 +23,10 @@ const (
 	packetTypePayload uint8 = 20
 )
 
+// TODO: to add closing connection with client (e.g. after timeout)
+// TODO: to log closed connection in debug level
+// TODO: to refactor (e.g. move methods under Driver struct)
+
 func main() {
 	setLogger()
 
@@ -45,6 +49,9 @@ func main() {
 			log.Error().Err(err).Msg("failed to accept connection")
 			continue
 		}
+
+		log.Debug().Str("remote_address", conn.RemoteAddr().String()).
+			Str("local_address", conn.LocalAddr().String()).Msg("accepted connection")
 
 		go handleConnection(conn)
 	}
