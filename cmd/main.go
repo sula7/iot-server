@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"os"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/sula7/iot-server/internal/packet"
 )
 
 // header (4 bytes):
@@ -56,23 +57,6 @@ func main() {
 	}
 }
 
-func writePong(conn net.Conn) error {
-	header := make([]byte, 4)
-	header[0] = protocolVersion1
-	header[1] = packetTypePong
-
-	body := make([]byte, 10)
-
-	packet := append(header, body...)
-
-	_, err := conn.Write(packet)
-	if err != nil {
-		return fmt.Errorf("failed to write packet: %w", err)
-	}
-
-	return nil
-}
-
 func setLogger() {
 	level, exists := os.LookupEnv("LOG_LEVEL")
 	if !exists {
@@ -91,6 +75,11 @@ func setLogger() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
+
+	header := make([]byte, 4)
+	header[0] = protocolVersion1
+	header[1] = packetTypePong
+	body := make([]byte, 10)
 
 	for {
 		buf := make([]byte, 14)
@@ -114,7 +103,8 @@ func handleConnection(conn net.Conn) {
 		switch buf[1] {
 		case packetTypePing:
 			log.Debug().Msg("ping")
-			if err = writePong(conn); err != nil {
+			err = packet.NewV1(header, body).Write(conn)
+			if err != nil {
 				log.Error().Err(err).Msg("failed to write pong packet")
 			}
 			log.Debug().Msg("pong")
