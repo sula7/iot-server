@@ -1,9 +1,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 
@@ -11,10 +9,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// header:
+// header (4 bytes):
 // - protocol version
 // - packet type
-// body
+// - reserved
+// - reserved
+// body (10 bytes)
 
 const (
 	protocolVersion1  uint8 = 1
@@ -24,7 +24,6 @@ const (
 )
 
 // TODO: to add closing connection with client (e.g. after timeout)
-// TODO: to log closed connection in debug level
 // TODO: to refactor (e.g. move methods under Driver struct)
 
 func main() {
@@ -95,10 +94,12 @@ func handleConnection(conn net.Conn) {
 
 	for {
 		buf := make([]byte, 14)
-		n, err := io.ReadFull(conn, buf)
+		n, err := conn.Read(buf)
 		if err != nil {
-			if n == 0 && errors.Is(err, io.EOF) {
-				continue
+			if n == 0 {
+				log.Debug().Str("remote_address", conn.RemoteAddr().String()).
+					Str("local_address", conn.LocalAddr().String()).Msg("lost connection")
+				return
 			}
 
 			log.Error().Err(err).Msg("failed to read")
